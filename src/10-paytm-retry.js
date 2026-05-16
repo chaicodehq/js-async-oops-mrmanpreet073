@@ -115,39 +115,151 @@
 export class PaymentError extends Error {
   constructor(message, code, amount) {
     // Your code here
+
+    super(message)
+
+    this.name = "PaymentError"
+    this.code = code
+    this.amount = amount
+
   }
+
 }
 
 export class InsufficientFundsError extends PaymentError {
   constructor(amount, balance) {
     // Your code here
+
+    super(`Insufficient funds: need ${amount}, have ${balance}`,
+      `INSUFFICIENT_FUNDS`, amount)
+
+    this.name = "InsufficientFundsError"
+    this.balance = balance
   }
 }
 
 export class NetworkError extends PaymentError {
   constructor(amount) {
     // Your code here
+    super(
+      "Network error during transaction",
+      "NETWORK_ERROR",
+      amount
+    );
+    this.name = "NetworkError"
+    this.retryable = true
   }
 }
 
 export class FraudDetectedError extends PaymentError {
   constructor(amount) {
     // Your code here
+    super(
+      "Suspicious transaction detected",
+      "FRAUD_DETECTED",
+      amount
+    );
+    this.name = "FraudDetectedError"
+    this.retryable = false
   }
 }
 
 export async function processPayment(amount, balance, networkStatus) {
   // Your code here
+  await new Promise((resolve) => {
+    setTimeout(resolve, 50);
+  });
+  if (
+    typeof amount !== "number" ||
+    amount <= 0 ||
+    Number.isNaN(amount)
+  ) throw new PaymentError("Invalid amount", "INVALID_AMOUNT", amount)
+  if (amount > balance) throw new InsufficientFundsError(amount, balance)
+  if (networkStatus === "offline") throw new NetworkError(amount)
+  if (amount > 100000) throw new FraudDetectedError(amount)
+
+
+  return {
+    transactionId: "TXN" + Math.floor(Math.random() * 1000000),
+    amount,
+    status: "success",
+    timestamp: new Date().toISOString()
+  }
+
+
 }
 
 export async function retryPayment(paymentFn, maxRetries, delayMs) {
   // Your code here
+
+  if (maxRetries < 0) {
+    throw new Error("maxRetries must be >= 0");
+  }
+
+  if (delayMs <= 0) {
+    throw new Error("delayMs must be > 0");
+  }
+
+  let lastError;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+
+    try {
+
+      const result = await paymentFn();
+      return result;
+
+    } catch (error) {
+
+      if (!(error instanceof NetworkError)) {
+        throw error
+      }
+
+
+      lastError = error
+      if (attempt === maxRetries) {
+        break;
+      }
+
+      setTimeout(() => {
+      }, delayMs);
+    }
+
+  }
+  throw lastError
 }
 
 export async function processWithFallback(primaryFn, fallbackFn) {
   // Your code here
+  try {
+
+    const result = await primaryFn()
+    return result
+
+  } catch (primaryError) {
+
+    try {
+
+      const result = await fallbackFn()
+      return result
+
+    } catch (fallbackError) {
+
+      throw new PaymentError(
+        `Primary: ${primaryError.message}, Fallback: ${fallbackError.message}`,
+        "BOTH_FAILED", 0)
+
+    }
+  }
+
 }
 
 export function categorizeError(error) {
   // Your code here
+
+
+  if (error instanceof InsufficientFundsError) return { type: "insufficient_funds", retryable: false, message: error.message }
+  if (error instanceof NetworkError) return { type: "network", retryable: true, message: error.message }
+  if (error instanceof FraudDetectedError) return { type: "fraud", retryable: false, message: error.message }
+  return { type: "unknown", retryable: false, message: error.message || "Unknown error" }
 }

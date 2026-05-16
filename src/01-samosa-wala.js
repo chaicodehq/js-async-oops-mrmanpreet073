@@ -75,12 +75,92 @@
  */
 export function createSamosaCart(ownerName, location) {
   // Your code here
-}
 
+  return {
+    owner: ownerName,
+    location: location,
+    menu: { samosa: 15, jalebi: 20, kachori: 25 },
+    sales: [],
+    sellItem: function (itemName, quantity) {
+      if (itemName === "" || quantity <= 0) {
+        return -1
+      }
+
+      let items = Object.keys(this.menu)
+      let itemexistance = items.includes(itemName)
+
+
+      if (itemexistance) {
+        let p = this.menu[itemName]
+        let total = p * quantity
+        let item = itemName
+        this.sales.push({ item, quantity, total })
+        return total;
+      } else {
+        return -1
+      }
+
+    },
+    getDailySales: function () {
+      if (this.sales.length === 0) {
+        return 0
+      }
+      else {
+        let totals = this.sales.reduce((acc, item) => (
+          acc + item.total
+        ), 0)
+        return totals;
+      }
+    },
+    getPopularItem: function () {
+
+      if (this.sales.length === 0) {
+        return null
+      }
+
+      let samosaqty = this.sales
+        .filter(i => i.item === "samosa")
+        .reduce((acc, i) => acc + i.quantity, 0);
+
+      let jalebiqty = this.sales
+        .filter(i => i.item === "jalebi")
+        .reduce((acc, i) => acc + i.quantity, 0);
+
+      let kachoriqty = this.sales
+        .filter(i => i.item === "kachori")
+        .reduce((acc, i) => acc + i.quantity, 0);
+
+      let max = Math.max(samosaqty, jalebiqty, kachoriqty);
+
+      if (max === samosaqty) return "samosa";
+      if (max === jalebiqty) return "jalebi";
+      return "kachori";
+
+    },
+    moveTo: function (newLocation) {
+      this.location = newLocation;
+      return `${this.owner} ka cart ab ${newLocation} pe hai!`;
+    },
+
+    resetDay: function () {
+      this.sales = [];
+      return `${this.owner} ka naya din shuru!`;
+    }
+
+  }
+}
+//  *   - moveTo(newLocation)
+//  *     Updates this.location to newLocation.
+//  *     Returns string: "${this.owner} ka cart ab ${newLocation} pe hai!"
+//  *
+//  *   - resetDay()
+//  *     Clears this.sales array (empty kar do).
+//  *     Returns string: "${this.owner} ka naya din shuru!"
 export function demonstrateThisLoss(cart) {
-  // Your code here
+  const fn = cart.sellItem;
+  return fn;
 }
 
 export function fixWithBind(cart) {
-  // Your code here
+  return cart.sellItem.bind(cart);
 }
